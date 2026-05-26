@@ -68,6 +68,17 @@ suite("blameCommand # formatGitHubBlameUrl", () => {
       "https://remote.url/blame/master/rel/path/to/file.js"
     );
   });
+
+  test("wiki: falls back to /wiki/<page> (no blame view for wikis)", () => {
+    const results = blame.formatGitHubBlameUrl(
+      "https://github.com/owner/repo.wiki",
+      "master",
+      "Home.md",
+      {},
+      { start: 10 }
+    );
+    assert.equal(results, "https://github.com/owner/repo/wiki/Home");
+  });
 });
 
 suite("blameCommand # formatBitbucketBlameUrl", () => {

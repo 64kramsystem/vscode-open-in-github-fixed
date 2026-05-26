@@ -92,6 +92,113 @@ suite("fileCommand # formatGitHubFileUrl", () => {
       "https://remote.url/blob/master/rel/path/to/file.md?plain=1#L10"
     );
   });
+
+  test("wiki: rewrites <repo>.wiki remote to /wiki/<page>, drops .md, branch, query, lines", () => {
+    const results = file.formatGitHubFileUrl(
+      "https://github.com/owner/repo.wiki",
+      "master",
+      "Home.md",
+      {},
+      { start: 10, end: 20 }
+    );
+    assert.equal(results, "https://github.com/owner/repo/wiki/Home");
+  });
+
+  test("wiki: works without lines and with hyphenated page name", () => {
+    const results = file.formatGitHubFileUrl(
+      "https://github.com/owner/repo.wiki",
+      "master",
+      "Some-Page.md"
+    );
+    assert.equal(results, "https://github.com/owner/repo/wiki/Some-Page");
+  });
+
+  test("wiki: applies remote URL mapping before wiki detection", () => {
+    const results = file.formatGitHubFileUrl(
+      "https://github.com/owner/repo.wiki",
+      "master",
+      "Home.md",
+      {
+        "https://github.com/owner/repo.wiki":
+          "https://github.com/mapped/repo.wiki",
+      }
+    );
+    assert.equal(results, "https://github.com/mapped/repo/wiki/Home");
+  });
+
+  test("wiki: flattens nested wiki paths (GitHub wikis have no directories)", () => {
+    const results = file.formatGitHubFileUrl(
+      "https://github.com/owner/repo.wiki",
+      "master",
+      "calibration/calibration_guide.md"
+    );
+    assert.equal(
+      results,
+      "https://github.com/owner/repo/wiki/calibration_guide"
+    );
+  });
+
+  test("wiki: strips non-Markdown wiki markup extensions", () => {
+    assert.equal(
+      file.formatGitHubFileUrl(
+        "https://github.com/owner/repo.wiki",
+        "master",
+        "Home.textile"
+      ),
+      "https://github.com/owner/repo/wiki/Home"
+    );
+    assert.equal(
+      file.formatGitHubFileUrl(
+        "https://github.com/owner/repo.wiki",
+        "master",
+        "Page.asciidoc"
+      ),
+      "https://github.com/owner/repo/wiki/Page"
+    );
+  });
+
+  test("wiki: preserves path for non-page assets (workflows, images)", () => {
+    assert.equal(
+      file.formatGitHubFileUrl(
+        "https://github.com/owner/repo.wiki",
+        "master",
+        ".github/workflows/deploy-wiki.yml"
+      ),
+      "https://github.com/owner/repo/wiki/.github/workflows/deploy-wiki.yml"
+    );
+    assert.equal(
+      file.formatGitHubFileUrl(
+        "https://github.com/owner/repo.wiki",
+        "master",
+        "images/GUI/filament-preset.png"
+      ),
+      "https://github.com/owner/repo/wiki/images/GUI/filament-preset.png"
+    );
+  });
+
+  test("wiki: strips full github-markup extension set", () => {
+    const cases: Array<[string, string]> = [
+      ["Page.mdx", "Page"],
+      ["Code.litcoffee", "Code"],
+      ["Guide.rest", "Guide"],
+      ["Guide.rst.txt", "Guide"],
+      ["Guide.rest.txt", "Guide"],
+      ["Doc.pod6", "Doc"],
+      ["Doc.mediawiki", "Doc"],
+      ["Page.adoc", "Page"],
+    ];
+    for (const [input, expected] of cases) {
+      assert.equal(
+        file.formatGitHubFileUrl(
+          "https://github.com/owner/repo.wiki",
+          "master",
+          input
+        ),
+        `https://github.com/owner/repo/wiki/${expected}`,
+        `input=${input}`
+      );
+    }
+  });
 });
 
 suite("fileCommand # formatBitbucketFileUrl", () => {

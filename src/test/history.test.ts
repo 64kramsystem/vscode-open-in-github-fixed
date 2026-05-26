@@ -29,6 +29,24 @@ suite("historyCommand # formatGitHubHistoryUrl", () => {
       "https://mapped.remote.url/commits/master/rel/path/to/file.js"
     );
   });
+
+  test("wiki: rewrites to /wiki/<page>/_history", () => {
+    const results = history.formatGitHubHistoryUrl(
+      "https://github.com/owner/repo.wiki",
+      "master",
+      "Home.md"
+    );
+    assert.equal(results, "https://github.com/owner/repo/wiki/Home/_history");
+  });
+
+  test("wiki: non-page assets skip /_history suffix", () => {
+    const results = history.formatGitHubHistoryUrl(
+      "https://github.com/owner/repo.wiki",
+      "master",
+      "images/foo.png"
+    );
+    assert.equal(results, "https://github.com/owner/repo/wiki/images/foo.png");
+  });
 });
 
 suite("historyCommand # formatBitbucketHistoryUrl", () => {
