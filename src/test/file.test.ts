@@ -199,6 +199,48 @@ suite("fileCommand # formatGitHubFileUrl", () => {
       );
     }
   });
+
+  test("wiki: appends precomputed anchor to page URL", () => {
+    assert.equal(
+      file.formatGitHubFileUrl(
+        "https://github.com/owner/repo.wiki",
+        "master",
+        "Home.md",
+        {},
+        { start: 1, anchor: "#installation" }
+      ),
+      "https://github.com/owner/repo/wiki/Home#installation"
+    );
+  });
+
+  test("wiki: no anchor when not provided", () => {
+    assert.equal(
+      file.formatGitHubFileUrl(
+        "https://github.com/owner/repo.wiki",
+        "master",
+        "Home.md",
+        {},
+        { start: 1 }
+      ),
+      "https://github.com/owner/repo/wiki/Home"
+    );
+  });
+
+  test("wiki: anchor appended to non-page asset path as-is (caller controls)", () => {
+    // anchor is precomputed in baseCommand and only set for Markdown
+    // files, so non-page assets never receive one in practice. Verify
+    // the formatter doesn't add one on its own.
+    assert.equal(
+      file.formatGitHubFileUrl(
+        "https://github.com/owner/repo.wiki",
+        "master",
+        "images/foo.png",
+        {},
+        { start: 1 }
+      ),
+      "https://github.com/owner/repo/wiki/images/foo.png"
+    );
+  });
 });
 
 suite("fileCommand # formatBitbucketFileUrl", () => {

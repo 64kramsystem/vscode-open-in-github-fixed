@@ -256,3 +256,190 @@ suite("#prepareQuickPickItems", () => {
     });
   });
 });
+
+suite("#isMarkdownFile", () => {
+  test("matches Markdown-family extensions only", () => {
+    for (const ext of [
+      "md",
+      "mkd",
+      "mkdn",
+      "mdwn",
+      "mdown",
+      "markdown",
+      "mdx",
+      "litcoffee",
+    ]) {
+      assert.ok(
+        common.isMarkdownFile(`Home.${ext}`),
+        `expected match for .${ext}`
+      );
+    }
+    for (const ext of ["textile", "rdoc", "rst", "rest", "adoc", "pod"]) {
+      assert.ok(
+        !common.isMarkdownFile(`Home.${ext}`),
+        `expected no match for .${ext}`
+      );
+    }
+  });
+});
+
+suite("#computeMarkdownHeadingAnchor", () => {
+  test("returns anchor for ATX heading on cursor line", () => {
+    const lines = ["# Top", "", "## Installation"];
+    assert.equal(
+      common.computeMarkdownHeadingAnchor(lines, 2),
+      "#installation"
+    );
+  });
+
+  test("supports all six heading levels", () => {
+    for (let level = 1; level <= 6; level++) {
+      const lines = [`${"#".repeat(level)} Header`];
+      assert.equal(
+        common.computeMarkdownHeadingAnchor(lines, 0),
+        "#header",
+        `level=${level}`
+      );
+    }
+  });
+
+  test("returns empty for non-heading lines", () => {
+    assert.equal(
+      common.computeMarkdownHeadingAnchor(["Plain paragraph."], 0),
+      ""
+    );
+    assert.equal(common.computeMarkdownHeadingAnchor([""], 0), "");
+  });
+
+  test("strips trailing closing ATX hash run", () => {
+    assert.equal(
+      common.computeMarkdownHeadingAnchor(["## Heading ##"], 0),
+      "#heading"
+    );
+  });
+
+  test("collapses internal whitespace to single hyphens", () => {
+    assert.equal(
+      common.computeMarkdownHeadingAnchor(["##  Spaced   Out  "], 0),
+      "#spaced-out"
+    );
+  });
+
+  test("drops punctuation, ASCII-lowercases, preserves non-ASCII letter case", () => {
+    // Per GitHub docs / html-pipeline's `ascii_downcase`: only A–Z are
+    // lowered, so Θ stays Θ (not θ).
+    assert.equal(
+      common.computeMarkdownHeadingAnchor(
+        ["## This'll be a _Helpful_ Section About the Greek Letter Θ!"],
+        0
+      ),
+      "#thisll-be-a-helpful-section-about-the-greek-letter-Θ"
+    );
+  });
+
+  test("strips reference-style and shortcut links", () => {
+    assert.equal(
+      common.computeMarkdownHeadingAnchor(["## See [documentation][guide]"], 0),
+      "#see-documentation"
+    );
+    assert.equal(
+      common.computeMarkdownHeadingAnchor(["## See [docs]"], 0),
+      "#see-docs"
+    );
+  });
+
+  test("respects fence length: shorter fences inside longer ones don't close", () => {
+    const lines = [
+      "````markdown",
+      "```js",
+      "## inside sample",
+      "```",
+      "````",
+      "## After",
+    ];
+    assert.equal(common.computeMarkdownHeadingAnchor(lines, 2), "");
+    assert.equal(common.computeMarkdownHeadingAnchor(lines, 5), "#after");
+  });
+
+  test("Setext headings participate in duplicate-slug counting", () => {
+    const lines = ["Usage", "-----", "", "## Usage"];
+    // Setext h2 "Usage" → #usage; later ATX "## Usage" → #usage-1.
+    assert.equal(common.computeMarkdownHeadingAnchor(lines, 0), "#usage");
+    assert.equal(common.computeMarkdownHeadingAnchor(lines, 1), "#usage");
+    assert.equal(common.computeMarkdownHeadingAnchor(lines, 3), "#usage-1");
+  });
+
+  test("decodes hexadecimal HTML entities", () => {
+    // &#x26; → '&'; '&' is then stripped as punctuation; the
+    // surrounding spaces collapse to a single hyphen.
+    assert.equal(
+      common.computeMarkdownHeadingAnchor(["## API &#x26; CLI"], 0),
+      "#api-cli"
+    );
+  });
+
+  test("indented 4+ spaces is a code block, not a Setext heading", () => {
+    const lines = ["    Usage", "-----", "", "## Usage"];
+    // First "Usage" is a code block (indented 4 spaces) so `-----` is a
+    // thematic break, not a setext underline. The real heading is the
+    // ATX one, which must claim #usage (not #usage-1).
+    assert.equal(common.computeMarkdownHeadingAnchor(lines, 3), "#usage");
+  });
+
+  test("HTML comments suppress heading-like content", () => {
+    const lines = ["<!--", "## Hidden", "-->", "## Hidden"];
+    // Heading inside the comment doesn't contribute; visible #Hidden
+    // gets the bare slug.
+    assert.equal(common.computeMarkdownHeadingAnchor(lines, 3), "#hidden");
+  });
+
+  test("collision-avoidance: literal `## Foo-1` after two `## Foo`s", () => {
+    const lines = ["## Foo", "## Foo", "## Foo-1"];
+    assert.equal(common.computeMarkdownHeadingAnchor(lines, 0), "#foo");
+    assert.equal(common.computeMarkdownHeadingAnchor(lines, 1), "#foo-1");
+    // Third heading would otherwise collide with the second's #foo-1.
+    assert.equal(common.computeMarkdownHeadingAnchor(lines, 2), "#foo-1-1");
+  });
+
+  test("strips inline formatting before slugging", () => {
+    assert.equal(
+      common.computeMarkdownHeadingAnchor(
+        ["## Use `npm install` and **read** the [docs](https://x)"],
+        0
+      ),
+      "#use-npm-install-and-read-the-docs"
+    );
+  });
+
+  test("disambiguates repeated headings with -1, -2 …", () => {
+    const lines = ["## Usage", "", "## Usage", "", "## Usage"];
+    assert.equal(common.computeMarkdownHeadingAnchor(lines, 0), "#usage");
+    assert.equal(common.computeMarkdownHeadingAnchor(lines, 2), "#usage-1");
+    assert.equal(common.computeMarkdownHeadingAnchor(lines, 4), "#usage-2");
+  });
+
+  test("ignores heading-like lines inside fenced code blocks", () => {
+    const lines = [
+      "Intro",
+      "```",
+      "## Not a heading",
+      "```",
+      "## Real heading",
+    ];
+    assert.equal(common.computeMarkdownHeadingAnchor(lines, 2), "");
+    assert.equal(
+      common.computeMarkdownHeadingAnchor(lines, 4),
+      "#real-heading"
+    );
+  });
+
+  test("respects ~~~ fences as well as backticks", () => {
+    const lines = ["~~~", "## inside tilde fence", "~~~", "## After"];
+    assert.equal(common.computeMarkdownHeadingAnchor(lines, 1), "");
+    assert.equal(common.computeMarkdownHeadingAnchor(lines, 3), "#after");
+  });
+
+  test("returns empty when cursor index is out of range", () => {
+    assert.equal(common.computeMarkdownHeadingAnchor([], 0), "");
+  });
+});
