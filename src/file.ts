@@ -35,7 +35,7 @@ export function formatGitHubFileUrl(
       ? remoteURLMappings[derivedRemote]
       : derivedRemote;
   if (isGitHubWiki(remote)) {
-    return formatGitHubWikiPageUrl(remote, filePath);
+    return formatGitHubWikiPageUrl(remote, filePath) + (lines?.anchor ?? "");
   }
   return `${remote}/blob/${formatGithubBranchName(
     branch

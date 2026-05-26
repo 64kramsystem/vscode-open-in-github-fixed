@@ -18,6 +18,13 @@ interface Formatters {
 export interface SelectedLines {
   start: number;
   end?: number;
+  /**
+   * Pre-computed URL fragment for the cursor position — e.g.
+   * `#installation` when the cursor sits on a Markdown ATX heading in a
+   * wiki page. Empty when not applicable. Computed once in `baseCommand`
+   * so URL formatters stay pure.
+   */
+  anchor?: string;
 }
 
 export type Action = (item?: QuickPickItem) => void;
@@ -44,7 +51,31 @@ export function baseCommand(
   const fileUri = window.activeTextEditor.document.uri;
   const lineStart = window.activeTextEditor.selection.start.line + 1;
   const lineEnd = window.activeTextEditor.selection.end.line + 1;
-  const selectedLines = { start: lineStart, end: lineEnd };
+  let anchor = "";
+  if (isMarkdownFile(filePath)) {
+    try {
+      const cursorLineIndex = lineStart - 1;
+      // One line of lookahead so we can detect Setext headings sitting
+      // on the cursor line.
+      const lastIndex = Math.min(
+        cursorLineIndex + 1,
+        window.activeTextEditor.document.lineCount - 1
+      );
+      const docLines: string[] = [];
+      for (let i = 0; i <= lastIndex; i++) {
+        docLines.push(window.activeTextEditor.document.lineAt(i).text);
+      }
+      anchor = computeMarkdownHeadingAnchor(docLines, cursorLineIndex);
+    } catch {
+      // Anchor generation is a convenience; never let it break URL copy.
+      anchor = "";
+    }
+  }
+  const selectedLines: SelectedLines = {
+    start: lineStart,
+    end: lineEnd,
+    anchor,
+  };
   const config = workspace.getConfiguration(
     "openInGitHub",
     window.activeTextEditor.document.uri
@@ -474,6 +505,222 @@ export function isBitbucket(remote: string): boolean {
  */
 export function isGitHubWiki(remote: string): boolean {
   return /\.wiki$/.test(remote);
+}
+
+/**
+ * Markdown-family extensions only (subset of WIKI_MARKUP_EXTENSION). Used
+ * to gate heading-anchor generation: Textile/RST/AsciiDoc/etc. use
+ * different heading syntax and slug rules.
+ */
+const MARKDOWN_EXTENSION =
+  /\.(md|mkd|mkdn|mdwn|mdown|markdown|mdx|litcoffee)$/i;
+
+export function isMarkdownFile(filePath: string): boolean {
+  return MARKDOWN_EXTENSION.test(filePath);
+}
+
+/**
+ * Decode a numeric character reference; return empty string for invalid
+ * code points so a bogus `&#x110000;` can't crash the URL command.
+ */
+function safeCodePoint(cp: number): string {
+  if (!Number.isFinite(cp) || cp < 0 || cp > 0x10ffff) return "";
+  return String.fromCodePoint(cp);
+}
+
+/**
+ * Strip inline Markdown formatting from a heading's source text the way
+ * GitHub's renderer would before slugging. Handles links (inline,
+ * reference, shortcut), images, inline code, bold/emphasis, strike-
+ * through, raw HTML tags, and the most common HTML entities.
+ */
+function stripInlineMarkdown(text: string): string {
+  return (
+    text
+      // Images: ![alt](url) / ![alt][ref] / ![alt]
+      .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+      .replace(/!\[([^\]]*)\]\[[^\]]*\]/g, "$1")
+      .replace(/!\[([^\]]*)\]/g, "$1")
+      // Links: [text](url) / [text][ref] / [text]
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+      .replace(/\[([^\]]+)\]\[[^\]]*\]/g, "$1")
+      .replace(/\[([^\]]+)\]/g, "$1")
+      // Inline code spans (single or multiple backticks)
+      .replace(/(`+)([^`]+?)\1/g, "$2")
+      // Bold / emphasis / strikethrough
+      .replace(/\*\*([^*]+?)\*\*/g, "$1")
+      .replace(/(?<![A-Za-z0-9_])__([^_]+?)__(?![A-Za-z0-9_])/g, "$1")
+      .replace(/\*([^*]+?)\*/g, "$1")
+      .replace(/(?<![A-Za-z0-9_])_([^_]+?)_(?![A-Za-z0-9_])/g, "$1")
+      .replace(/~~([^~]+?)~~/g, "$1")
+      // Raw HTML tags
+      .replace(/<[^>]+>/g, "")
+      // Common HTML entities
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+      .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => safeCodePoint(parseInt(n, 16)))
+      .replace(/&#(\d+);/g, (_, n) => safeCodePoint(parseInt(n, 10)))
+  );
+}
+
+/**
+ * Slug a Markdown heading the way GitHub's renderer does. Critically:
+ * only ASCII A–Z are lowercased — non-ASCII letters keep their case
+ * (matches `html-pipeline`'s `ascii_downcase`). Punctuation that isn't
+ * `_` or `-` is dropped; spaces collapse to single hyphens.
+ */
+function slugifyMarkdownHeading(headingText: string): string {
+  return stripInlineMarkdown(headingText)
+    .replace(/[A-Z]/g, (c) => c.toLowerCase())
+    .replace(/[^\p{L}\p{N}\s_-]/gu, "")
+    .trim()
+    .replace(/\s+/g, "-");
+}
+
+/**
+ * Returns the slug for a heading line on its own — empty string if the
+ * line isn't an ATX heading.
+ */
+function atxHeadingSlug(line: string): string {
+  const m = line.match(/^ {0,3}#{1,6}\s+(.+?)\s*#*\s*$/);
+  return m ? slugifyMarkdownHeading(m[1]) : "";
+}
+
+/**
+ * True if `line` looks like a Setext underline (`=+` for h1, `-+` for
+ * h2). The caller must also confirm the line above is paragraph text.
+ */
+function isSetextUnderline(line: string): boolean {
+  return /^ {0,3}(?:=+|-+)\s*$/.test(line);
+}
+
+/**
+ * If the cursor sits on a Markdown heading (ATX or Setext), returns the
+ * URL fragment GitHub would assign — including `-1`/`-2`/… disambiguation
+ * for repeated slugs (with collision-avoidance against literal slugs
+ * already in the document). Returns empty string for non-heading lines,
+ * lines inside fenced code blocks or HTML comments, and slugs that
+ * collapse to empty.
+ *
+ * Fence-length and Setext detection require lookahead, so `lines` should
+ * include at least one line past `cursorLineIndex` when possible.
+ *
+ * Best-effort, not a CommonMark parser. Known limitations:
+ * - raw HTML blocks (e.g. `<div>…</div>`) are treated as regular text;
+ *   heading-looking lines inside them may be counted.
+ * - autolinks (`<https://…>`) inside headings are dropped as HTML tags.
+ * - named HTML entities outside `&amp;`/`&lt;`/`&gt;`/`&quot;`/`&apos;`
+ *   pass through literally.
+ * - headings inside blockquotes (`> ## Title`) aren't detected.
+ *
+ * Defense-in-depth: callers should wrap invocations in try/catch to keep
+ * a future bug here from breaking the URL command.
+ */
+export function computeMarkdownHeadingAnchor(
+  lines: readonly string[],
+  cursorLineIndex: number
+): string {
+  let inFence = false;
+  let fenceChar = "";
+  let fenceLen = 0;
+  let inHtmlComment = false;
+  const counts: Record<string, number> = {};
+  const occupied = new Set<string>();
+  let cursorAnchor = "";
+  let i = 0;
+
+  // Reserve a final slug, advancing the counter past any collisions
+  // already produced (e.g. literal `## Foo-1` after two `## Foo`s).
+  const reserveSlug = (base: string): string => {
+    let n = counts[base] ?? 0;
+    let final = n === 0 ? base : `${base}-${n}`;
+    while (occupied.has(final)) {
+      n++;
+      final = `${base}-${n}`;
+    }
+    counts[base] = n + 1;
+    occupied.add(final);
+    return final;
+  };
+
+  while (i < lines.length && i <= cursorLineIndex) {
+    const line = lines[i];
+
+    // HTML comment block. Comments can span lines and may even share a
+    // line with content; we conservatively skip everything between
+    // `<!--` and `-->`.
+    if (inHtmlComment) {
+      if (line.includes("-->")) inHtmlComment = false;
+      i++;
+      continue;
+    }
+    if (line.includes("<!--") && !/<!--.*-->/.test(line)) {
+      inHtmlComment = true;
+      i++;
+      continue;
+    }
+
+    // Fence handling. Closing fence must match the opener's character
+    // and be at least as long, and may not carry an info string.
+    if (inFence) {
+      const closeRe = new RegExp(`^ {0,3}\\${fenceChar}{${fenceLen},}\\s*$`);
+      if (closeRe.test(line)) {
+        inFence = false;
+        fenceChar = "";
+        fenceLen = 0;
+      }
+      i++;
+      continue;
+    }
+    const fenceOpen = line.match(/^ {0,3}(`{3,}|~{3,})/);
+    if (fenceOpen) {
+      inFence = true;
+      fenceChar = fenceOpen[1][0];
+      fenceLen = fenceOpen[1].length;
+      i++;
+      continue;
+    }
+
+    // ATX heading on this line. Indented 4+ spaces would be a code block.
+    if (!/^ {4,}/.test(line)) {
+      const atxSlug = atxHeadingSlug(line);
+      if (atxSlug) {
+        const final = reserveSlug(atxSlug);
+        if (i === cursorLineIndex) cursorAnchor = final;
+        i++;
+        continue;
+      }
+    }
+
+    // Setext heading: text on `i`, underline on `i+1`. Text indented 4+
+    // spaces is an indented code block, not a heading.
+    if (
+      i + 1 < lines.length &&
+      line.trim() !== "" &&
+      !/^ {4,}/.test(line) &&
+      !/^ {0,3}#{1,6}\s/.test(line) &&
+      isSetextUnderline(lines[i + 1])
+    ) {
+      const slug = slugifyMarkdownHeading(line.trim());
+      if (slug) {
+        const final = reserveSlug(slug);
+        if (i === cursorLineIndex || i + 1 === cursorLineIndex) {
+          cursorAnchor = final;
+        }
+      }
+      i += 2;
+      continue;
+    }
+
+    // Cursor on a non-heading line.
+    if (i === cursorLineIndex) return "";
+    i++;
+  }
+
+  return cursorAnchor ? `#${cursorAnchor}` : "";
 }
 
 /**
