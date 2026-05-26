@@ -2,13 +2,28 @@
 
 > **About this fork.** This is a fork of
 > [d4rkr00t/vscode-open-in-github](https://github.com/d4rkr00t/vscode-open-in-github)
-> that fixes wiki URL generation. Upstream produces
-> `https://github.com/owner/repo.wiki/blob/<branch>/Page.md?plain=1#L<n>`
-> (which 404s) for files in `*.wiki` repos; this fork emits the actual
-> rendered wiki URL — `https://github.com/owner/repo/wiki/Page` for
-> pages, with directory structure preserved for non-page assets. See
-> upstream issue
-> [#59](https://github.com/d4rkr00t/vscode-open-in-github/issues/59).
+> with two changes:
+>
+> 1. **Wiki URLs are correct.** Upstream produces
+>    `https://github.com/owner/repo.wiki/blob/<branch>/Page.md?plain=1#L<n>`
+>    (which 404s) for files in `*.wiki` repos; this fork emits the actual
+>    rendered wiki URL — `https://github.com/owner/repo/wiki/Page` for
+>    pages, with directory structure preserved for non-page assets. See
+>    upstream issue
+>    [#59](https://github.com/d4rkr00t/vscode-open-in-github/issues/59).
+> 2. **Heading anchor for wiki pages.** When the cursor is on a Markdown
+>    heading (ATX `## Foo` or Setext `Foo\n---`), the URL gains the
+>    matching anchor (`…/wiki/Page#foo`). Wiki pages don't support line
+>    anchors, so this gets you as close to the cursor as GitHub's
+>    renderer allows. Anchor generation is best-effort: it handles the
+>    common cases (fenced code blocks, HTML comments, indented code,
+>    repeated-heading disambiguation, basic inline formatting) but
+>    doesn't fully emulate GitHub's renderer. Headings inside raw HTML
+>    blocks or blockquotes, autolinks (`<https://…>`) inside headings,
+>    and named HTML entities other than `&amp;`/`&lt;`/`&gt;`/`&quot;`/
+>    `&apos;` may yield a slightly-off anchor — in which case just edit
+>    the fragment in the URL.
+>
 > No other behavior is changed.
 
 [![github-issues](https://img.shields.io/github/issues/d4rkr00t/vscode-open-in-github.svg)](https://github.com/d4rkr00t/vscode-open-in-github/issues)
