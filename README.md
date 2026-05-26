@@ -1,5 +1,16 @@
 # Open in GitHub
 
+> **About this fork.** This is a fork of
+> [d4rkr00t/vscode-open-in-github](https://github.com/d4rkr00t/vscode-open-in-github)
+> that fixes wiki URL generation. Upstream produces
+> `https://github.com/owner/repo.wiki/blob/<branch>/Page.md?plain=1#L<n>`
+> (which 404s) for files in `*.wiki` repos; this fork emits the actual
+> rendered wiki URL — `https://github.com/owner/repo/wiki/Page` for
+> pages, with directory structure preserved for non-page assets. See
+> upstream issue
+> [#59](https://github.com/d4rkr00t/vscode-open-in-github/issues/59).
+> No other behavior is changed.
+
 [![github-issues](https://img.shields.io/github/issues/d4rkr00t/vscode-open-in-github.svg)](https://github.com/d4rkr00t/vscode-open-in-github/issues)
 [![commitizen friendly](https://img.shields.io/badge/commitizen-friendly-brightgreen.svg)](http://commitizen.github.io/cz-cl)
 
