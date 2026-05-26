@@ -4,6 +4,8 @@ import {
   formatGitHubLinePointer,
   formatGithubBranchName,
   formatGitHubQueryParams,
+  formatGitHubWikiPageUrl,
+  isGitHubWiki,
   SelectedLines,
   formatGitlabLinePointer,
   Action,
@@ -32,6 +34,9 @@ export function formatGitHubFileUrl(
     derivedRemote in remoteURLMappings
       ? remoteURLMappings[derivedRemote]
       : derivedRemote;
+  if (isGitHubWiki(remote)) {
+    return formatGitHubWikiPageUrl(remote, filePath);
+  }
   return `${remote}/blob/${formatGithubBranchName(
     branch
   )}/${filePath}${formatGitHubQueryParams(filePath)}${formatGitHubLinePointer(

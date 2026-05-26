@@ -2,6 +2,8 @@ import { window, workspace } from "vscode";
 import {
   baseCommand,
   formatGithubBranchName,
+  formatGitHubWikiPageUrl,
+  isGitHubWiki,
   SelectedLines,
   Action,
   RemoteURLMappings,
@@ -29,6 +31,9 @@ export function formatGitHubHistoryUrl(
     derivedRemote in remoteURLMappings
       ? remoteURLMappings[derivedRemote]
       : derivedRemote;
+  if (isGitHubWiki(remote)) {
+    return `${formatGitHubWikiPageUrl(remote, filePath)}/_history`;
+  }
   return `${remote}/commits/${formatGithubBranchName(branch)}/${filePath}`;
 }
 

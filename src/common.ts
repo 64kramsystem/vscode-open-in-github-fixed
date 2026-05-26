@@ -467,6 +467,34 @@ export function isBitbucket(remote: string): boolean {
 }
 
 /**
+ * Returns true if remote is a GitHub wiki repo (URL ends with `.wiki`).
+ *
+ * GitHub clones wikis from `*.wiki.git`; after `formatRemotes` strips `.git`,
+ * the remaining URL ends with `.wiki`.
+ */
+export function isGitHubWiki(remote: string): boolean {
+  return /\.wiki$/.test(remote);
+}
+
+/**
+ * Builds the rendered-wiki URL for a Markdown page in a `*.wiki` repo.
+ *
+ * GitHub wiki page identifiers are flat (no directories) and have no
+ * extension — `Home.md` and `nested/Home.md` both render at `/wiki/Home`.
+ * Wiki URLs also don't support `/blob/<branch>/`, `?plain=1`, or line
+ * anchors.
+ */
+export function formatGitHubWikiPageUrl(
+  remote: string,
+  filePath: string
+): string {
+  const base = remote.replace(/\.wiki$/, "");
+  const basename = path.basename(filePath);
+  const page = basename.replace(/\.(md|markdown|mkd|mkdn|mdwn|mdown)$/i, "");
+  return `${base}/wiki/${page}`;
+}
+
+/**
  * Returns true if remote is gitlab.
  */
 export function isGitlab(remote: string): boolean {

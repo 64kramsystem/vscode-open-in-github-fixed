@@ -3,6 +3,8 @@ import {
   formatBitbucketLinePointer,
   formatGitHubLinePointer,
   formatGithubBranchName,
+  formatGitHubWikiPageUrl,
+  isGitHubWiki,
   SelectedLines,
   formatGitlabLinePointer,
   Action,
@@ -31,6 +33,9 @@ export function formatGitHubBlameUrl(
     derivedRemote in remoteURLMappings
       ? remoteURLMappings[derivedRemote]
       : derivedRemote;
+  if (isGitHubWiki(remote)) {
+    return formatGitHubWikiPageUrl(remote, filePath);
+  }
   return `${remote}/blame/${formatGithubBranchName(
     branch
   )}/${filePath}${formatGitHubLinePointer(lines)}`;
