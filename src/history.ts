@@ -4,6 +4,7 @@ import {
   formatGithubBranchName,
   formatGitHubWikiPageUrl,
   isGitHubWiki,
+  isGitHubWikiPage,
   SelectedLines,
   Action,
   RemoteURLMappings,
@@ -32,7 +33,8 @@ export function formatGitHubHistoryUrl(
       ? remoteURLMappings[derivedRemote]
       : derivedRemote;
   if (isGitHubWiki(remote)) {
-    return `${formatGitHubWikiPageUrl(remote, filePath)}/_history`;
+    const wikiUrl = formatGitHubWikiPageUrl(remote, filePath);
+    return isGitHubWikiPage(filePath) ? `${wikiUrl}/_history` : wikiUrl;
   }
   return `${remote}/commits/${formatGithubBranchName(branch)}/${filePath}`;
 }

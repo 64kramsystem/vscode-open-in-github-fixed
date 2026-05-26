@@ -477,21 +477,46 @@ export function isGitHubWiki(remote: string): boolean {
 }
 
 /**
- * Builds the rendered-wiki URL for a Markdown page in a `*.wiki` repo.
+ * Recognized wiki-page markup extensions, matching the github-markup gem
+ * (https://github.com/github/markup/blob/master/lib/github/markups.rb).
+ * Only files with these extensions render as wiki pages.
+ */
+const WIKI_MARKUP_EXTENSION =
+  /\.(md|mkd|mkdn|mdwn|mdown|markdown|mdx|litcoffee|textile|rdoc|org|creole|(media)?wiki|re?st(\.txt)?|a(scii)?doc|asc|pod6?)$/i;
+
+/**
+ * Returns true if `filePath` is a wiki *page* (a rendered markup file),
+ * as opposed to a non-page asset (image, workflow, etc.) that may also
+ * live in a wiki repo.
+ */
+export function isGitHubWikiPage(filePath: string): boolean {
+  return WIKI_MARKUP_EXTENSION.test(filePath);
+}
+
+/**
+ * Builds the rendered-wiki URL for a file in a `*.wiki` repo.
  *
- * GitHub wiki page identifiers are flat (no directories) and have no
- * extension — `Home.md` and `nested/Home.md` both render at `/wiki/Home`.
- * Wiki URLs also don't support `/blob/<branch>/`, `?plain=1`, or line
- * anchors.
+ * - Pages flatten to a basename without extension — GitHub wiki page
+ *   identifiers are flat. `calibration/calibration_guide.md` →
+ *   `/wiki/calibration_guide`, `Home.textile` → `/wiki/Home`.
+ * - Non-page assets preserve their full path —
+ *   `.github/workflows/deploy-wiki.yml` →
+ *   `/wiki/.github/workflows/deploy-wiki.yml`.
+ *
+ * Either way, wiki URLs don't support `/blob/<branch>/`, `?plain=1`, or
+ * line anchors.
  */
 export function formatGitHubWikiPageUrl(
   remote: string,
   filePath: string
 ): string {
   const base = remote.replace(/\.wiki$/, "");
-  const basename = path.basename(filePath);
-  const page = basename.replace(/\.(md|markdown|mkd|mkdn|mdwn|mdown)$/i, "");
-  return `${base}/wiki/${page}`;
+  if (isGitHubWikiPage(filePath)) {
+    const basename = path.basename(filePath);
+    const page = basename.replace(WIKI_MARKUP_EXTENSION, "");
+    return `${base}/wiki/${page}`;
+  }
+  return `${base}/wiki/${filePath}`;
 }
 
 /**
