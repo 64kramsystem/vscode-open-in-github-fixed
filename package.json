@@ -1,10 +1,10 @@
 {
-  "name": "vscode-open-in-github",
-  "displayName": "Open In GitHub",
-  "description": "Provides commands to quickly view the current file on GitHub.",
+  "name": "vscode-open-in-github-wiki-fixed",
+  "displayName": "Open In GitHub (Wiki fixed)",
+  "description": "Provides commands to quickly view the current file on GitHub. Fork of sysoev.vscode-open-in-github with wiki URL generation fixed.",
   "license": "MIT",
-  "version": "1.18.0",
-  "publisher": "sysoev",
+  "version": "1.18.1",
+  "publisher": "64kramsystem",
   "engines": {
     "vscode": "^1.75.0"
   },
@@ -18,12 +18,12 @@
     "bitbucket",
     "git"
   ],
-  "homepage": "https://github.com/d4rkr00t/vscode-open-in-github",
+  "homepage": "https://github.com/64kramsystem/vscode-open-in-github-fixed",
   "repository": {
     "type": "git",
-    "url": "https://github.com/d4rkr00t/vscode-open-in-github.git"
+    "url": "https://github.com/64kramsystem/vscode-open-in-github-fixed.git"
   },
-  "bugs": "https://github.com/d4rkr00t/vscode-open-in-github/issues",
+  "bugs": "https://github.com/64kramsystem/vscode-open-in-github-fixed/issues",
   "main": "./out/extension.js",
   "icon": "./assets/icon.jpg",
   "contributes": {
