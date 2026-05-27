@@ -1,4 +1,4 @@
-# Open in GitHub
+# Open In GitHub (Improved)
 
 > **About this fork.** This is a fork of
 > [d4rkr00t/vscode-open-in-github](https://github.com/d4rkr00t/vscode-open-in-github)
@@ -26,7 +26,7 @@
 >
 > No other behavior is changed.
 
-[![github-issues](https://img.shields.io/github/issues/d4rkr00t/vscode-open-in-github.svg)](https://github.com/d4rkr00t/vscode-open-in-github/issues)
+[![github-issues](https://img.shields.io/github/issues/64kramsystem/vscode-open-in-github-fixed.svg)](https://github.com/64kramsystem/vscode-open-in-github-fixed/issues)
 [![commitizen friendly](https://img.shields.io/badge/commitizen-friendly-brightgreen.svg)](http://commitizen.github.io/cz-cl)
 
 Provides commands to quickly view the current file on GitHub/Bitbucket.
@@ -36,7 +36,7 @@ Provides commands to quickly view the current file on GitHub/Bitbucket.
 Launch VS Code Quick Open (⌘+P), paste the following command, and type enter.
 
 ```
-ext install vscode-open-in-github
+ext install 64kramsystem.vscode-open-in-github-wiki-fixed
 ```
 
 ## Usage
