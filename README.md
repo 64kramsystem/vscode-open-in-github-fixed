@@ -2,7 +2,7 @@
 
 > **About this fork.** This is a fork of
 > [d4rkr00t/vscode-open-in-github](https://github.com/d4rkr00t/vscode-open-in-github)
-> with two changes:
+> with two behavioral changes plus a packaging fix:
 >
 > 1. **Wiki URLs are correct.** Upstream produces
 >    `https://github.com/owner/repo.wiki/blob/<branch>/Page.md?plain=1#L<n>`
@@ -23,6 +23,11 @@
 >    and named HTML entities other than `&amp;`/`&lt;`/`&gt;`/`&quot;`/
 >    `&apos;` may yield a slightly-off anchor — in which case just edit
 >    the fragment in the URL.
+> 3. **Leaner package.** Upstream bundles its code with esbuild but still
+>    ships its entire `node_modules` (~800 files) in the published
+>    `.vsix`. This fork excludes `node_modules` from the package, keeping
+>    only `open` and its dependencies — which can't be bundled because of
+>    the `xdg-open` helper binary — cutting the package to ~30 files.
 >
 > No other behavior is changed.
 

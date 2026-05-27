@@ -8,3 +8,9 @@ src/**
 .gitignore
 tsconfig.json
 vsc-extension-quickstart.md
+
+node_modules/**
+!node_modules/open/**
+!node_modules/define-lazy-prop/**
+!node_modules/is-docker/**
+!node_modules/is-wsl/**
