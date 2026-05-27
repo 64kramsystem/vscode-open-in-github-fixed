@@ -3,7 +3,7 @@
   "displayName": "Open In GitHub (Improved)",
   "description": "Provides commands to quickly view the current file on GitHub. Fork of sysoev.vscode-open-in-github with wiki URL generation fixed and a Markdown heading anchor added for wiki pages.",
   "license": "MIT",
-  "version": "1.19.0",
+  "version": "1.19.1",
   "publisher": "64kramsystem",
   "engines": {
     "vscode": "^1.75.0"
