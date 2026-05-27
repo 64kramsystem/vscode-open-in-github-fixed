@@ -139,7 +139,7 @@
     "watch-tests": "tsc -p . -w",
     "pretest": "npm run compile-tests && npm run compile",
     "test": "node ./out/test/runTest.js",
-    "lint:staged": "lint-staged --no-stash"
+    "lint:staged": "lint-staged"
   },
   "devDependencies": {
     "@types/mocha": "^9.1.1",
@@ -157,8 +157,7 @@
   },
   "lint-staged": {
     "*.ts": [
-      "prettier --write",
-      "git add"
+      "prettier --write"
     ]
   },
   "pre-commit": [
