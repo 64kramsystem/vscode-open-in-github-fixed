@@ -26,9 +26,6 @@
 >
 > No other behavior is changed.
 
-[![github-issues](https://img.shields.io/github/issues/64kramsystem/vscode-open-in-github-fixed.svg)](https://github.com/64kramsystem/vscode-open-in-github-fixed/issues)
-[![commitizen friendly](https://img.shields.io/badge/commitizen-friendly-brightgreen.svg)](http://commitizen.github.io/cz-cl)
-
 Provides commands to quickly view the current file on GitHub/Bitbucket.
 
 ## Installation
